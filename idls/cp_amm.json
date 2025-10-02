@@ -1,0 +1,263 @@
+{
+    "address": "cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG",
+    "metadata": {
+        "name": "cp_amm",
+        "version": "0.1.4",
+        "spec": "0.1.0",
+        "description": "Created with Anchor"
+    },
+    "instructions": [
+        {
+            "name": "create_position",
+            "discriminator": [
+                48,
+                215,
+                197,
+                153,
+                96,
+                203,
+                180,
+                133
+            ],
+            "accounts": [
+                {
+                    "name": "owner"
+                },
+                {
+                    "name": "position_nft_mint",
+                    "writable": true,
+                    "signer": true
+                },
+                {
+                    "name": "position_nft_account",
+                    "writable": true,
+                    "pda": {
+                        "seeds": [
+                            {
+                                "kind": "const",
+                                "value": [
+                                    112,
+                                    111,
+                                    115,
+                                    105,
+                                    116,
+                                    105,
+                                    111,
+                                    110,
+                                    95,
+                                    110,
+                                    102,
+                                    116,
+                                    95,
+                                    97,
+                                    99,
+                                    99,
+                                    111,
+                                    117,
+                                    110,
+                                    116
+                                ]
+                            },
+                            {
+                                "kind": "account",
+                                "path": "position_nft_mint"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "payer",
+                    "writable": true,
+                    "signer": true
+                },
+                {
+                    "name": "pool_authority",
+                    "address": "HLnpSz9h2S4hiLQ43rnSD9XkcUThA7B8hQMKmDaiTLcC"
+                },
+                {
+                    "name": "pool"
+                },
+                {
+                    "name": "position",
+                    "writable": true,
+                    "pda": {
+                        "seeds": [
+                            {
+                                "kind": "const",
+                                "value": [
+                                    112,
+                                    111,
+                                    115,
+                                    105,
+                                    116,
+                                    105,
+                                    111,
+                                    110
+                                ]
+                            },
+                            {
+                                "kind": "account",
+                                "path": "position_nft_mint"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "token_program",
+                    "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+                },
+                {
+                    "name": "system_program",
+                    "address": "11111111111111111111111111111111"
+                },
+                {
+                    "name": "rent",
+                    "address": "SysvarRent111111111111111111111111111111111"
+                },
+                {
+                    "name": "associated_token_program",
+                    "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+                },
+                {
+                    "name": "event_authority",
+                    "pda": {
+                        "seeds": [
+                            {
+                                "kind": "const",
+                                "value": [
+                                    95,
+                                    95,
+                                    101,
+                                    118,
+                                    101,
+                                    110,
+                                    116,
+                                    95,
+                                    97,
+                                    117,
+                                    116,
+                                    104,
+                                    111,
+                                    114,
+                                    105,
+                                    116,
+                                    121
+                                ]
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "program"
+                }
+            ],
+            "args": []
+        },
+        {
+            "name": "claim_position_fee",
+            "discriminator": [
+                180,
+                38,
+                154,
+                17,
+                133,
+                33,
+                162,
+                211
+            ],
+            "accounts": [
+                {
+                    "name": "pool_authority",
+                    "address": "HLnpSz9h2S4hiLQ43rnSD9XkcUThA7B8hQMKmDaiTLcC"
+                },
+                {
+                    "name": "pool",
+                    "relations": [
+                        "position"
+                    ]
+                },
+                {
+                    "name": "position",
+                    "writable": true
+                },
+                {
+                    "name": "token_a_account",
+                    "writable": true
+                },
+                {
+                    "name": "token_b_account",
+                    "writable": true
+                },
+                {
+                    "name": "token_a_vault",
+                    "writable": true,
+                    "relations": [
+                        "pool"
+                    ]
+                },
+                {
+                    "name": "token_b_vault",
+                    "writable": true,
+                    "relations": [
+                        "pool"
+                    ]
+                },
+                {
+                    "name": "position_nft_account",
+                    "writable": true
+                },
+                {
+                    "name": "token_a_mint"
+                },
+                {
+                    "name": "token_b_mint"
+                },
+                {
+                    "name": "owner",
+                    "signer": true
+                },
+                {
+                    "name": "token_a_program",
+                    "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+                },
+                {
+                    "name": "token_b_program",
+                    "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+                },
+                {
+                    "name": "event_authority",
+                    "pda": {
+                        "seeds": [
+                            {
+                                "kind": "const",
+                                "value": [
+                                    95,
+                                    95,
+                                    101,
+                                    118,
+                                    101,
+                                    110,
+                                    116,
+                                    95,
+                                    97,
+                                    117,
+                                    116,
+                                    104,
+                                    111,
+                                    114,
+                                    105,
+                                    116,
+                                    121
+                                ]
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "program"
+                }
+            ],
+            "args": []
+        }
+    ]
+}

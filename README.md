@@ -1,11 +1,13 @@
-# Rust Template [![Github Actions][gha-badge]][gha] [![License: MIT][license-badge]][license]
+# Star Fee Routing - Meteora DLMM V2 Integration
 
-[gha]: https://github.com/PaulRBerg/rust-template/actions
-[gha-badge]: https://github.com/PaulRBerg/rust-template/actions/workflows/ci.yml/badge.svg
-[license]: https://opensource.org/licenses/MIT
-[license-badge]: https://img.shields.io/badge/License-MIT-blue.svg
+A permissionless fee routing Anchor program for Meteora DLMM V2 that manages honorary quote-only fee positions and distributes fees to investors based on their locked token amounts from Streamflow.
 
-A template for developing Rust projects, with sensible defaults.
+## 🎯 Overview
+
+This program implements a two-part system:
+
+1. **Work Package A**: Initialize honorary fee positions that only accrue quote-mint fees
+2. **Work Package B**: Permissionless 24-hour distribution crank that distributes fees proportionally to investors
 
 ## Getting Started
 
