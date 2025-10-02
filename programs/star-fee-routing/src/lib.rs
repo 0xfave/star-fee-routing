@@ -23,7 +23,11 @@ const SECONDS_PER_DAY: i64 = 86400;
 pub mod star_fee_routing {
     use super::*;
 
-    /// Initialize the global state
+    /// @notice Initialize the global program state with creator configuration
+    /// @dev Sets up the global state account that stores the creator's fee destination
+    /// @param ctx The account context containing global_state, payer, and system_program
+    /// @param creator_quote_ata The creator's Associated Token Account for receiving fee share
+    /// @return Result<()> indicating success or failure of initialization
     pub fn initialize_global_state(ctx: Context<InitializeGlobalState>, creator_quote_ata: Pubkey) -> Result<()> {
         let global_state = &mut ctx.accounts.global_state;
 
@@ -33,7 +37,12 @@ pub mod star_fee_routing {
         Ok(())
     }
 
-    /// Initialize the honorary fee position (quote-only) - Work Package A
+    /// @notice Initialize a quote-only honorary fee position in a DAMM V2 pool
+    /// @dev Creates a position via CPI to DAMM V2 that only accrues fees from the quote token
+    /// @dev This is the core functionality for Work Package A - creating fee collection positions
+    /// @param ctx The account context containing pool, position, PDAs, and DAMM V2 accounts
+    /// @param vault_seed Unique identifier for the vault, used in PDA derivation
+    /// @return Result<()> indicating success or failure of position creation
     pub fn initialize_honorary_position(ctx: Context<InitializeHonoraryPosition>, vault_seed: u64) -> Result<()> {
         // Validate pool token order to ensure quote-only fees
         validate_quote_only_pool(&ctx)?;
@@ -97,7 +106,17 @@ pub mod star_fee_routing {
         Ok(())
     }
 
-    /// Permissionless 24h distribution crank - Work Package B
+    /// @notice Permissionless 24-hour fee distribution crank mechanism
+    /// @dev Claims fees from DAMM V2 position and distributes to creator and investors pro-rata
+    /// @dev This is the core functionality for Work Package B - automated fee distribution
+    /// @dev Uses pagination to handle large numbers of investors across multiple transactions
+    /// @param ctx The account context containing position, treasury, creator ATA, and program accounts
+    /// @param page_index Index for pagination when processing multiple investors (0-based)
+    /// @param investor_fee_share_bps Basis points allocated to investors (e.g., 8000 = 80%)
+    /// @param daily_cap_lamports Optional daily distribution cap in lamports to prevent excessive payouts
+    /// @param min_payout_lamports Minimum payout threshold to prevent dust transactions
+    /// @param y0_total Total locked tokens across all Y0 investors for pro-rata calculation
+    /// @return Result<()> indicating success or failure of fee distribution
     pub fn distribute_fees(
         ctx: Context<DistributeFees>,
         page_index: u32,
@@ -278,7 +297,13 @@ pub mod star_fee_routing {
     }
 }
 
-/// Transfer remaining fees to creator
+/// @notice Transfer quote token fees to the creator's Associated Token Account
+/// @dev Uses program PDA authority to transfer from quote treasury to creator ATA
+/// @dev Emits CreatorFeePaid event for transparency and tracking
+/// @param ctx The distribution context containing treasury and creator accounts
+/// @param amount The amount of quote tokens to transfer to creator (in token's base units)
+/// @param timestamp Current Unix timestamp for event logging
+/// @return Result<()> indicating success or failure of the transfer
 fn transfer_to_creator(ctx: &Context<DistributeFees>, amount: u64, timestamp: i64) -> Result<()> {
     let transfer_ctx = CpiContext::new(
         ctx.accounts.token_program.to_account_info(),
@@ -305,7 +330,12 @@ fn transfer_to_creator(ctx: &Context<DistributeFees>, amount: u64, timestamp: i6
     Ok(())
 }
 
-/// Validate that the pool configuration will only accrue quote fees
+/// @notice Validate that the DAMM V2 pool is configured for quote-only fee collection
+/// @dev Critical security function ensuring honorary position only accrues quote token fees
+/// @dev MUST fail if quote-only collection cannot be guaranteed per bounty requirements
+/// @dev Currently implements basic validation; TODO: add specific DAMM V2 pool state checks
+/// @param ctx The initialization context containing pool and token accounts
+/// @return Result<()> indicating whether pool passes quote-only validation
 fn validate_quote_only_pool(ctx: &Context<InitializeHonoraryPosition>) -> Result<()> {
     // In DAMM V2, we need to validate the pool's token order and collect_fee_mode
     // to ensure we only get quote token fees (token B)
@@ -320,6 +350,9 @@ fn validate_quote_only_pool(ctx: &Context<InitializeHonoraryPosition>) -> Result
     Ok(())
 }
 
+/// @notice Account structure for initializing the global program state
+/// @dev Defines all accounts required to set up the global configuration
+/// @dev The global_state account stores the creator's fee destination and is a Program Derived Address
 #[derive(Accounts)]
 pub struct InitializeGlobalState<'info> {
     #[account(
@@ -337,6 +370,10 @@ pub struct InitializeGlobalState<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// @notice Account structure for initializing a quote-only honorary fee position
+/// @dev Defines all accounts needed to create a position in DAMM V2 via Cross-Program Invocation
+/// @dev All PDAs are derived using the vault_seed parameter for secure ownership control
+/// @param vault_seed Unique identifier used in PDA derivation for position ownership
 #[derive(Accounts)]
 #[instruction(vault_seed: u64)]
 pub struct InitializeHonoraryPosition<'info> {
@@ -419,6 +456,15 @@ pub struct InitializeHonoraryPosition<'info> {
     pub rent: Sysvar<'info, Rent>,
 }
 
+/// @notice Account structure for the 24-hour fee distribution crank mechanism
+/// @dev Defines all accounts needed for claiming fees from DAMM V2 and distributing to stakeholders
+/// @dev Uses pagination via page_index to handle large numbers of investors across multiple transactions
+/// @dev Remaining accounts should be passed as: [streamflow_stream_1, investor_ata_1, ...]
+/// @param page_index Index for pagination when processing multiple investors (0-based)
+/// @param investor_fee_share_bps Basis points allocated to investors (e.g., 8000 = 80%)
+/// @param daily_cap_lamports Optional daily distribution cap in lamports
+/// @param min_payout_lamports Minimum payout threshold to prevent dust transactions
+/// @param y0_total Total locked tokens across all Y0 investors for pro-rata calculation
 #[derive(Accounts)]
 #[instruction(page_index: u32, investor_fee_share_bps: u16, daily_cap_lamports: Option<u64>, min_payout_lamports: u64, y0_total: u64)]
 pub struct DistributeFees<'info> {
