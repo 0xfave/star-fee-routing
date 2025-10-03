@@ -1,8 +1,10 @@
+use crate::FeeRoutingError;
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
     token::{self, Mint, Token, TokenAccount, Transfer},
 };
+use streamflow_sdk::state::Contract as StreamflowContract;
 
 declare_id!("45soP1GyzrULnWjAasDnp23T1yDZpkhPsQD6qQ98Ttdg");
 
@@ -117,10 +119,12 @@ pub mod star_fee_routing {
     /// @param min_payout_lamports Minimum payout threshold to prevent dust transactions
     /// @param y0_total Total locked tokens across all Y0 investors for pro-rata calculation
     /// @return Result<()> indicating success or failure of fee distribution
-    pub fn distribute_fees(
-        ctx: Context<DistributeFees>,
+    pub fn distribute_fees<'info>(
+        ctx: Context<'_, '_, '_, 'info, DistributeFees<'info>>,
+        trade_amount: u64,
+        fee_percentage: u64, // Fixed-point value (e.g., 100 = 1%)
         page_index: u32,
-        investor_fee_share_bps: u16,
+        investor_fee_share_bps: u32,
         daily_cap_lamports: Option<u64>,
         min_payout_lamports: u64,
         y0_total: u64,
@@ -233,8 +237,38 @@ pub mod star_fee_routing {
             });
         }
 
-        // Step 2: For demo purposes, assume some locked amounts
-        let total_locked = 1_000_000u64; // Placeholder for Streamflow integration
+        // Step 2: Query total locked tokens from Streamflow contracts
+        // Remaining accounts should be passed as: [streamflow_stream_1, investor_ata_1, streamflow_stream_2,
+        // investor_ata_2, ...]
+        let mut total_locked = 0u64;
+        let mut total_y0_amount = 0u64;
+
+        // Process pairs of accounts: (streamflow_contract, investor_ata)
+        for chunk in ctx.remaining_accounts.chunks(2) {
+            if chunk.len() != 2 {
+                continue; // Skip incomplete pairs
+            }
+
+            let streamflow_account = &chunk[0];
+            let _investor_ata = &chunk[1]; // Will be used for transfers later
+
+            // Query locked amount from this Streamflow contract
+            let locked_amount = get_locked_amount_from_streamflow(streamflow_account)?;
+            total_locked = total_locked.checked_add(locked_amount).ok_or(FeeRoutingError::ArithmeticOverflow)?;
+
+            // For Y0 calculation, we need the original deposited amount
+            let stream_data = &streamflow_account.data.borrow()[..];
+            if let Ok(contract) = StreamflowContract::try_from_slice(stream_data) {
+                total_y0_amount = total_y0_amount
+                    .checked_add(contract.ix.net_amount_deposited)
+                    .ok_or(FeeRoutingError::ArithmeticOverflow)?;
+            }
+        }
+
+        msg!("Distribution calculation:");
+        msg!("  - Total currently locked: {}", total_locked);
+        msg!("  - Total Y0 deposited: {}", total_y0_amount);
+        msg!("  - Number of streams: {}", ctx.remaining_accounts.len() / 2);
 
         if total_locked == 0 {
             // All tokens unlocked - send everything to creator
@@ -246,11 +280,14 @@ pub mod star_fee_routing {
             return Ok(());
         }
 
+        // Use dynamically queried Y0 total instead of parameter for more accurate calculation
+        let y0_total_actual = if total_y0_amount > 0 { total_y0_amount } else { y0_total };
+
         // Step 3: Calculate investor share
         let f_locked = (total_locked as u128)
             .checked_mul(10000u128)
             .ok_or(FeeRoutingError::ArithmeticOverflow)?
-            .checked_div(y0_total as u128)
+            .checked_div(y0_total_actual as u128)
             .ok_or(FeeRoutingError::ArithmeticOverflow)? as u64;
 
         let eligible_investor_share_bps = std::cmp::min(investor_fee_share_bps as u64, f_locked);
@@ -270,21 +307,69 @@ pub mod star_fee_routing {
 
         let investor_fee_quote = std::cmp::min(investor_fee_quote, remaining_daily_cap);
 
-        // For demonstration, emit event with calculated amounts
-        emit!(InvestorPayoutPage {
-            page_index,
-            investor_count: 1, // Placeholder
-            total_distributed: investor_fee_quote,
-            timestamp: current_ts,
-        });
+        // Step 4: Distribute fees to investors pro-rata based on locked amounts
+        let vault_seed = progress.vault_seed;
+        let seeds = &[QUOTE_TREASURY_SEED, &vault_seed.to_le_bytes(), &[ctx.bumps.quote_treasury_authority]];
+        let signer_seeds = &[&seeds[..]];
+
+        let mut total_distributed = 0u64;
+        let mut investor_count = 0u32;
+
+        // Process pairs of accounts: (streamflow_contract, investor_ata)
+        for chunk in ctx.remaining_accounts.chunks(2) {
+            if chunk.len() != 2 {
+                continue; // Skip incomplete pairs
+            }
+
+            let streamflow_account = &chunk[0];
+            let investor_ata = &chunk[1];
+
+            // Query locked amount for this specific investor
+            let investor_locked = get_locked_amount_from_streamflow(streamflow_account)?;
+
+            if investor_locked == 0 {
+                continue; // Skip investors with no locked tokens
+            }
+
+            // Calculate this investor's share: (investor_locked / total_locked) * investor_fee_quote
+            let investor_share = (investor_locked as u128)
+                .checked_mul(investor_fee_quote as u128)
+                .ok_or(FeeRoutingError::ArithmeticOverflow)?
+                .checked_div(total_locked as u128)
+                .ok_or(FeeRoutingError::ArithmeticOverflow)? as u64;
+
+            if investor_share < min_payout_lamports {
+                msg!("Skipping investor payout below minimum threshold: {} < {}", investor_share, min_payout_lamports);
+                continue;
+            }
+
+            // Transfer tokens to investor
+            let transfer_ctx = CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.quote_treasury.to_account_info(),
+                    to: investor_ata.to_account_info(),
+                    authority: ctx.accounts.quote_treasury_authority.to_account_info(),
+                },
+            );
+
+            token::transfer(transfer_ctx.with_signer(signer_seeds), investor_share)?;
+
+            total_distributed =
+                total_distributed.checked_add(investor_share).ok_or(FeeRoutingError::ArithmeticOverflow)?;
+            investor_count += 1;
+
+            msg!("Distributed {} quote tokens to investor (locked: {})", investor_share, investor_locked);
+        }
+
+        emit!(InvestorPayoutPage { page_index, investor_count, total_distributed, timestamp: current_ts });
 
         progress.daily_distributed =
-            progress.daily_distributed.checked_add(investor_fee_quote).ok_or(FeeRoutingError::ArithmeticOverflow)?;
+            progress.daily_distributed.checked_add(total_distributed).ok_or(FeeRoutingError::ArithmeticOverflow)?;
 
         // Send remainder to creator and complete the day
         let treasury_balance = ctx.accounts.quote_treasury.amount;
-        let creator_amount =
-            if treasury_balance > investor_fee_quote { treasury_balance - investor_fee_quote } else { 0 };
+        let creator_amount = treasury_balance; // All remaining balance goes to creator
 
         // Set completion status first
         progress.day_complete = true;
@@ -348,6 +433,36 @@ fn validate_quote_only_pool(ctx: &Context<InitializeHonoraryPosition>) -> Result
     // - Validate token order (quote should be token B)
 
     Ok(())
+}
+
+/// @notice Query locked token amount from a Streamflow contract for pro-rata distribution
+/// @dev Deserializes Streamflow contract data and calculates remaining locked tokens
+/// @dev Uses net_amount_deposited minus amount_withdrawn to get current locked balance
+/// @param stream_account_info The Streamflow contract account containing stream data
+/// @return Result<u64> The amount of tokens currently locked in the stream
+fn get_locked_amount_from_streamflow(stream_account_info: &AccountInfo) -> Result<u64> {
+    // Deserialize the Streamflow contract data
+    let stream_data = &stream_account_info.data.borrow()[..];
+
+    // Streamflow contracts don't have discriminators, so we can directly deserialize
+    let stream_contract =
+        StreamflowContract::try_from_slice(stream_data).map_err(|_| FeeRoutingError::InvalidStreamflowContract)?;
+
+    // Check if stream is closed
+    if stream_contract.closed {
+        return Ok(0);
+    }
+
+    // Calculate locked amount = deposited - withdrawn
+    let locked_amount = stream_contract.ix.net_amount_deposited.saturating_sub(stream_contract.amount_withdrawn);
+
+    msg!("Streamflow contract analysis:");
+    msg!("  - Net deposited: {}", stream_contract.ix.net_amount_deposited);
+    msg!("  - Amount withdrawn: {}", stream_contract.amount_withdrawn);
+    msg!("  - Locked amount: {}", locked_amount);
+    msg!("  - Stream closed: {}", stream_contract.closed);
+
+    Ok(locked_amount)
 }
 
 /// @notice Account structure for initializing the global program state

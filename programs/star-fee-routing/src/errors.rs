@@ -43,4 +43,7 @@ pub enum FeeRoutingError {
 
     #[msg("Position not owned by program PDA")]
     InvalidPositionOwner,
+
+    #[msg("Invalid Streamflow contract data - unable to deserialize")]
+    InvalidStreamflowContract,
 }
