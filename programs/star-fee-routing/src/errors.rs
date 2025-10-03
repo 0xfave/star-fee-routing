@@ -46,4 +46,7 @@ pub enum FeeRoutingError {
 
     #[msg("Invalid Streamflow contract data - unable to deserialize")]
     InvalidStreamflowContract,
+
+    #[msg("Pool validation failed - cannot guarantee quote-only fees")]
+    QuoteOnlyValidationFailed,
 }
