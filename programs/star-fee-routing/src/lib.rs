@@ -1,3 +1,6 @@
+#![allow(unexpected_cfgs)]
+#![allow(deprecated)]
+
 use crate::FeeRoutingError;
 use anchor_lang::prelude::*;
 use anchor_spl::{
@@ -9,6 +12,7 @@ use streamflow_sdk::state::Contract as StreamflowContract;
 declare_id!("45soP1GyzrULnWjAasDnp23T1yDZpkhPsQD6qQ98Ttdg");
 
 // DAMM V2 (CP-AMM) Program ID
+#[allow(dead_code)]
 const CP_AMM_PROGRAM_ID: &str = "cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG";
 
 pub mod errors;
@@ -117,10 +121,11 @@ pub mod star_fee_routing {
     /// @param min_payout_lamports Minimum payout threshold to prevent dust transactions
     /// @param y0_total Total locked tokens across all Y0 investors for pro-rata calculation
     /// @return Result<()> indicating success or failure of fee distribution
+    #[allow(clippy::too_many_arguments)]
     pub fn distribute_fees<'info>(
         ctx: Context<'_, '_, '_, 'info, DistributeFees<'info>>,
-        trade_amount: u64,
-        fee_percentage: u64, // Fixed-point value (e.g., 100 = 1%)
+        _trade_amount: u64,
+        _fee_percentage: u64, // Fixed-point value (e.g., 100 = 1%)
         page_index: u32,
         investor_fee_share_bps: u32,
         daily_cap_lamports: Option<u64>,
@@ -551,6 +556,7 @@ fn get_locked_amount_from_streamflow(stream_account_info: &AccountInfo) -> Resul
 /// @param base_treasury_after Base token treasury balance after fee claim
 /// @param quote_claimed Amount of quote tokens that were claimed
 /// @return Result<()> - fails if any base fees detected
+#[allow(dead_code)]
 fn detect_base_fees(base_treasury_before: u64, base_treasury_after: u64, quote_claimed: u64) -> Result<()> {
     // Check if base token treasury balance increased
     if base_treasury_after > base_treasury_before {
@@ -584,6 +590,7 @@ fn detect_base_fees(base_treasury_before: u64, base_treasury_after: u64, quote_c
 /// @param quote_mint_key The expected quote mint pubkey
 /// @param position_info Additional position information for validation
 /// @return Result<()> - fails if quote-only cannot be guaranteed
+#[allow(dead_code)]
 fn validate_quote_only_configuration(
     pool_account: &AccountInfo,
     quote_mint_key: &Pubkey,
