@@ -1,5 +1,6 @@
 # directories
 target/
+.cursor/
 
 # files
 **/*.rs.bk
