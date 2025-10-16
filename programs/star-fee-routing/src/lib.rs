@@ -18,6 +18,7 @@ const CP_AMM_PROGRAM_ID: &str = "cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG";
 pub mod errors;
 pub mod events;
 pub mod state;
+pub mod tests;
 
 pub use errors::*;
 pub use events::*;
