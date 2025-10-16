@@ -807,9 +807,9 @@ mod test {
         msg!("Quote Treasury: {}", quote_treasury);
 
         // Check if CP-AMM is loaded
-        let cp_amm_id = Pubkey::try_from("cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG")
-            .expect("Invalid CP-AMM program ID");
-        
+        let cp_amm_id =
+            Pubkey::try_from("cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG").expect("Invalid CP-AMM program ID");
+
         if svm.get_account(&cp_amm_id).is_none() {
             msg!("⚠️  CP-AMM not loaded - cannot execute real CPI");
             msg!("To enable: Ensure fixtures/cp_amm.so exists");
@@ -833,18 +833,16 @@ mod test {
 
         // Create global state
         let quote_mint = CreateMint::new(&mut svm, &payer).decimals(6).authority(&payer.pubkey()).send().unwrap();
-        
-        let creator_quote_ata = CreateAssociatedTokenAccount::new(&mut svm, &payer, &quote_mint)
-            .owner(&payer.pubkey())
-            .send()
-            .unwrap();
+
+        let creator_quote_ata =
+            CreateAssociatedTokenAccount::new(&mut svm, &payer, &quote_mint).owner(&payer.pubkey()).send().unwrap();
 
         msg!("Quote Mint: {}", quote_mint);
         msg!("Creator Quote ATA: {}", creator_quote_ata);
 
         // Initialize global state
         let (global_state, _) = Pubkey::find_program_address(&[crate::GLOBAL_STATE_SEED], &program_id);
-        
+
         let anchor_global_state = solana_to_anchor_pubkey(&global_state);
         let anchor_payer = solana_to_anchor_pubkey(&payer.pubkey());
         let anchor_system_program = solana_to_anchor_pubkey(&SYSTEM_PROGRAM_ID);
@@ -880,10 +878,9 @@ mod test {
         msg!("✅ Global state initialized");
 
         // Check if external programs are loaded
-        let streamflow_id = Pubkey::try_from("strmRqUCoQUgGUan5YhzUZa6KqdzwX5L6FpUxfmKg5m")
-            .expect("Invalid Streamflow ID");
-        let cp_amm_id = Pubkey::try_from("cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG")
-            .expect("Invalid CP-AMM ID");
+        let streamflow_id =
+            Pubkey::try_from("strmRqUCoQUgGUan5YhzUZa6KqdzwX5L6FpUxfmKg5m").expect("Invalid Streamflow ID");
+        let cp_amm_id = Pubkey::try_from("cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG").expect("Invalid CP-AMM ID");
 
         let streamflow_loaded = svm.get_account(&streamflow_id).is_some();
         let cp_amm_loaded = svm.get_account(&cp_amm_id).is_some();
@@ -914,10 +911,10 @@ mod test {
         let (_svm, _payer) = setup();
 
         // Verify program IDs
-        let streamflow_id = Pubkey::try_from("strmRqUCoQUgGUan5YhzUZa6KqdzwX5L6FpUxfmKg5m")
-            .expect("Invalid Streamflow program ID");
-        let cp_amm_id = Pubkey::try_from("cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG")
-            .expect("Invalid CP-AMM program ID");
+        let streamflow_id =
+            Pubkey::try_from("strmRqUCoQUgGUan5YhzUZa6KqdzwX5L6FpUxfmKg5m").expect("Invalid Streamflow program ID");
+        let cp_amm_id =
+            Pubkey::try_from("cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG").expect("Invalid CP-AMM program ID");
 
         msg!("Streamflow Program ID: {}", streamflow_id);
         msg!("CP-AMM Program ID: {}", cp_amm_id);
