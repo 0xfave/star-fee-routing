@@ -823,7 +823,8 @@ mod test {
         // Create a stream and manually mark it as closed
         let deposited = 100_000_000u64;
         let withdrawn = 30_000_000u64;
-        let metadata = create_mock_streamflow_contract(&mut svm, &payer, &recipient.pubkey(), &mint, deposited, withdrawn);
+        let metadata =
+            create_mock_streamflow_contract(&mut svm, &payer, &recipient.pubkey(), &mint, deposited, withdrawn);
 
         // Manually modify the contract to set closed = true
         let mut account = svm.get_account(&metadata).unwrap();
@@ -831,7 +832,7 @@ mod test {
         // Deserialize, modify, and re-serialize
         use anchor_lang::{AnchorDeserialize, AnchorSerialize};
         use streamflow_sdk::state::Contract as StreamflowContract;
-        
+
         let mut data_slice = &account.data[..];
         let mut contract = StreamflowContract::deserialize(&mut data_slice).expect("Should deserialize");
 
@@ -1134,13 +1135,13 @@ mod test {
 
         // Initial Y0 allocation: 100M tokens total
         let total_y0 = 100_000_000u64;
-        
+
         // Create Streamflow contracts for 2 investors
         // Investor 1: 50M tokens, 20M withdrawn (30M locked)
         let investor1_deposited = 50_000_000u64;
         let investor1_withdrawn = 20_000_000u64;
         let investor1_locked = investor1_deposited - investor1_withdrawn;
-        
+
         let stream1_metadata = create_mock_streamflow_contract(
             &mut svm,
             &payer,
@@ -1150,13 +1151,18 @@ mod test {
             investor1_withdrawn,
         );
         msg!("  Investor 1 Stream: {}", stream1_metadata);
-        msg!("    Deposited: {}, Withdrawn: {}, Locked: {}", investor1_deposited, investor1_withdrawn, investor1_locked);
+        msg!(
+            "    Deposited: {}, Withdrawn: {}, Locked: {}",
+            investor1_deposited,
+            investor1_withdrawn,
+            investor1_locked
+        );
 
         // Investor 2: 50M tokens, 20M withdrawn (30M locked)
         let investor2_deposited = 50_000_000u64;
         let investor2_withdrawn = 20_000_000u64;
         let investor2_locked = investor2_deposited - investor2_withdrawn;
-        
+
         let stream2_metadata = create_mock_streamflow_contract(
             &mut svm,
             &payer,
@@ -1166,7 +1172,12 @@ mod test {
             investor2_withdrawn,
         );
         msg!("  Investor 2 Stream: {}", stream2_metadata);
-        msg!("    Deposited: {}, Withdrawn: {}, Locked: {}", investor2_deposited, investor2_withdrawn, investor2_locked);
+        msg!(
+            "    Deposited: {}, Withdrawn: {}, Locked: {}",
+            investor2_deposited,
+            investor2_withdrawn,
+            investor2_locked
+        );
 
         // Calculate total locked from actual Streamflow contracts
         let current_locked = investor1_locked + investor2_locked;
@@ -1243,8 +1254,8 @@ mod test {
             0,
         );
 
-        let investor1_locked_queried = crate::get_locked_amount_from_streamflow(&stream1_info)
-            .expect("Should query investor 1 locked amount");
+        let investor1_locked_queried =
+            crate::get_locked_amount_from_streamflow(&stream1_info).expect("Should query investor 1 locked amount");
 
         let mut stream2_account = svm.get_account(&stream2_metadata).unwrap();
         let stream2_key = solana_to_anchor_pubkey(&stream2_metadata);
@@ -1260,8 +1271,8 @@ mod test {
             0,
         );
 
-        let investor2_locked_queried = crate::get_locked_amount_from_streamflow(&stream2_info)
-            .expect("Should query investor 2 locked amount");
+        let investor2_locked_queried =
+            crate::get_locked_amount_from_streamflow(&stream2_info).expect("Should query investor 2 locked amount");
 
         msg!("  Queried from Streamflow:");
         msg!("    Investor 1 locked: {}", investor1_locked_queried);
