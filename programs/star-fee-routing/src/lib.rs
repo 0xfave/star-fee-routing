@@ -529,9 +529,11 @@ fn get_locked_amount_from_streamflow(stream_account_info: &AccountInfo) -> Resul
     // Deserialize the Streamflow contract data
     let stream_data = &stream_account_info.data.borrow()[..];
 
-    // Streamflow contracts don't have discriminators, so we can directly deserialize
+    // Streamflow contracts don't have discriminators, use try_deserialize
+    use borsh::BorshDeserialize;
+    let mut data_slice = stream_data;
     let stream_contract =
-        StreamflowContract::try_from_slice(stream_data).map_err(|_| FeeRoutingError::InvalidStreamflowContract)?;
+        StreamflowContract::deserialize(&mut data_slice).map_err(|_| FeeRoutingError::InvalidStreamflowContract)?;
 
     // Check if stream is closed
     if stream_contract.closed {
